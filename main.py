@@ -1,28 +1,43 @@
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-app=FastAPI()
 
-templates=Jinja2Templates(directory="templates")
+app = FastAPI()
 
-posts: list[dict] = [
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+templates = Jinja2Templates(directory="templates")
+templates.env.globals.update(url_for=templates.env.globals.get("url_for"))
+
+posts = [
     {
         "id": 1,
         "author": "Corey Schafer",
-        "title": "Fastapi is Awesome",
-        "content": "This is the framework that is really easy to use and super fast",
-        "date_posted": "April 20,2025"
+        "title": "FastAPI is Awesome",
+        "content": "This framework is really easy to use and super fast.",
+        "date_posted": "April 20, 2025"
     },
     {
         "id": 2,
         "author": "Jane",
         "title": "Python is Awesome",
-        "content": "Python for Fastapi",
-        "date_posted": "April 20,2025"
+        "content": "Python works great with FastAPI.",
+        "date_posted": "April 21, 2025"
     },
 ]
+
+
 @app.get("/")
 def home(request: Request):
-    return templates.TemplateResponse(request,"home.html",{"posts":posts,"title":"Home"})
+    # FIX: Explicitly name 'context' or swap the parameter order
+    return templates.TemplateResponse(
+        request=request,
+        name="home.html",
+        context={
+            "posts": posts,
+            "title": "Home",
+        }
+    )
 
 
 @app.get("/posts")
