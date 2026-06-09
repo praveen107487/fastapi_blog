@@ -48,8 +48,3 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
-
-@app.get("/")
-async def root(db: AsyncSession):
-    return {"message": "Database connected successfully"}

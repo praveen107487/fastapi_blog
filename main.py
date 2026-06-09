@@ -43,6 +43,10 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 templates = Jinja2Templates(directory="templates")
 
 
+# ==========================================
+#          HTML FRONTEND PAGES
+# ==========================================
+
 @app.get("/", include_in_schema=False, name="home")
 @app.get("/posts", include_in_schema=False, name="posts")
 async def home(
@@ -52,7 +56,6 @@ async def home(
     result = await db.execute(
         select(models.Post).options(selectinload(models.Post.author))
     )
-
     posts_db = result.scalars().all()
 
     return templates.TemplateResponse(
@@ -76,7 +79,6 @@ async def post_page(
         .options(joinedload(models.Post.author))
         .where(models.Post.id == post_id)
     )
-
     post = result.scalars().first()
 
     if not post:
@@ -95,11 +97,7 @@ async def post_page(
     )
 
 
-@app.get(
-    "/users/{user_id}/posts",
-    include_in_schema=False,
-    name="user_posts",
-)
+@app.get("/users/{user_id}/posts", include_in_schema=False, name="user_posts")
 async def user_posts_page(
     request: Request,
     user_id: int,
@@ -136,23 +134,18 @@ async def user_posts_page(
     )
 
 
-# ---------------- USERS API ---------------- #
+# ==========================================
+#                USERS API
+# ==========================================
 
-
-@app.post(
-    "/api/users",
-    response_model=UserResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@app.post("/api/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user: UserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     existing_user = (
         await db.execute(
-            select(models.User).where(
-                models.User.username == user.username
-            )
+            select(models.User).where(models.User.username == user.username)
         )
     ).scalars().first()
 
@@ -164,9 +157,7 @@ async def create_user(
 
     existing_email = (
         await db.execute(
-            select(models.User).where(
-                models.User.email == user.email
-            )
+            select(models.User).where(models.User.email == user.email)
         )
     ).scalars().first()
 
@@ -226,15 +217,10 @@ async def update_user(
             detail="User not found",
         )
 
-    if (
-        user_update.username is not None
-        and user_update.username != user.username
-    ):
+    if user_update.username is not None and user_update.username != user.username:
         existing_user = (
             await db.execute(
-                select(models.User).where(
-                    models.User.username == user_update.username
-                )
+                select(models.User).where(models.User.username == user_update.username)
             )
         ).scalars().first()
 
@@ -243,18 +229,12 @@ async def update_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already exists",
             )
-
         user.username = user_update.username
 
-    if (
-        user_update.email is not None
-        and user_update.email != user.email
-    ):
+    if user_update.email is not None and user_update.email != user.email:
         existing_email = (
             await db.execute(
-                select(models.User).where(
-                    models.User.email == user_update.email
-                )
+                select(models.User).where(models.User.email == user_update.email)
             )
         ).scalars().first()
 
@@ -263,7 +243,6 @@ async def update_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already exists",
             )
-
         user.email = user_update.email
 
     if user_update.image_file is not None:
@@ -280,10 +259,7 @@ async def delete_user(
     user_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(
-        select(models.User).where(models.User.id == user_id)
-    )
-
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
 
     if not user:
@@ -296,14 +272,11 @@ async def delete_user(
     await db.commit()
 
 
-# ---------------- POSTS API ---------------- #
+# ==========================================
+#                POSTS API
+# ==========================================
 
-
-@app.post(
-    "/api/posts",
-    response_model=PostResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@app.post("/api/posts", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post(
     post: PostCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -379,9 +352,7 @@ async def update_post_full(
     if post_data.user_id != post.user_id:
         user = (
             await db.execute(
-                select(models.User).where(
-                    models.User.id == post_data.user_id
-                )
+                select(models.User).where(models.User.id == post_data.user_id)
             )
         ).scalar_one_or_none()
 
@@ -432,10 +403,7 @@ async def update_post_partial(
     return post
 
 
-@app.delete(
-    "/api/posts/{post_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
+@app.delete("/api/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_post(
     post_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -458,18 +426,13 @@ async def delete_post(
     await db.commit()
 
 
-@app.get(
-    "/api/users/{user_id}/posts",
-    response_model=list[PostResponse],
-)
+@app.get("/api/users/{user_id}/posts", response_model=list[PostResponse])
 async def get_user_posts(
     user_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     user = (
-        await db.execute(
-            select(models.User).where(models.User.id == user_id)
-        )
+        await db.execute(select(models.User).where(models.User.id == user_id))
     ).scalars().first()
 
     if not user:
@@ -489,19 +452,16 @@ async def get_user_posts(
     return posts
 
 
-# ---------------- EXCEPTION HANDLERS ---------------- #
-
+# ==========================================
+#          GLOBAL EXCEPTION HANDLERS
+# ==========================================
 
 @app.exception_handler(StarletteHTTPException)
 async def general_http_exception_handler(
     request: Request,
     exception: StarletteHTTPException,
 ):
-    message = (
-        exception.detail
-        if exception.detail
-        else "An error occurred. Please try again."
-    )
+    message = exception.detail if exception.detail else "An error occurred. Please try again."
 
     if request.url.path.startswith("/api"):
         return JSONResponse(
