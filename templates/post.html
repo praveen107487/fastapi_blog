@@ -11,7 +11,7 @@
             <div class="flex-grow-1">
                 <div class="article-metadata mb-2">
                     <a class="me-2" href="/users/{{ post.author.id }}/posts">{{ post.author.username }}</a>
-                    <small class="text-body-secondary">{{ post.date_posted }}</small>
+                    <small class="text-body-secondary">{{ post.date_posted | datetimeformat }}</small>
                 </div>
                 <h2 class="article-title">{{ post.title }}</h2>
                 <p class="article-content">{{ post.content }}</p>

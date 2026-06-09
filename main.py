@@ -40,7 +40,33 @@ app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/media", StaticFiles(directory="media"), name="media")
 
+# --- JINJA2 TEMPLATE & FILTER SETUP ---
 templates = Jinja2Templates(directory="templates")
+
+def format_datetime(value, format_str="%b %d, %Y at %I:%M %p"):
+    """
+    Formating filter for cleaner timestamps in HTML views.
+    Handles raw string times, full ISO formats, and datetime objects.
+    """
+    if not value:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime(format_str)
+    
+    try:
+        # Tries parsing text values like 10:02:01.821512 or ISO variants
+        if " " in str(value) or "T" in str(value):
+            dt = datetime.fromisoformat(str(value))
+        else:
+            # Handles pure time string fallback
+            dt = datetime.strptime(str(value), "%H:%M:%S.%f")
+            return dt.strftime("%I:%M %p")
+        return dt.strftime(format_str)
+    except ValueError:
+        return str(value)
+
+# Registering custom filter name for usage inside template pipes '|'
+templates.env.filters["datetimeformat"] = format_datetime
 
 
 # ==========================================
