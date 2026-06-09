@@ -1,10 +1,11 @@
 from datetime import datetime, UTC
 from typing import Annotated
+
 from fastapi import FastAPI, Request, HTTPException, status, Depends
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -12,11 +13,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import models
 from database import Base, engine, get_db
 from schemas import (
-    PostResponse,
     PostCreate,
-    UserResponse,
+    PostResponse,
+    PostUpdate,
     UserCreate,
     UserPublic,
+    UserResponse,
+    UserUpdate,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -32,13 +35,18 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/", include_in_schema=False, name="home")
 @app.get("/posts", include_in_schema=False, name="posts")
 def home(request: Request, db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Post))
+    result = db.execute(
+        select(models.Post).options(joinedload(models.Post.author))
+    )
     posts_db = result.scalars().all()
 
     return templates.TemplateResponse(
         request=request,
         name="home.html",
-        context={"posts": posts_db, "title": "Home"},
+        context={
+            "posts": posts_db,
+            "title": "Home",
+        },
     )
 
 
@@ -49,8 +57,11 @@ def post_page(
     db: Annotated[Session, Depends(get_db)],
 ):
     result = db.execute(
-        select(models.Post).where(models.Post.id == post_id)
+        select(models.Post)
+        .options(joinedload(models.Post.author))
+        .where(models.Post.id == post_id)
     )
+
     post = result.scalars().first()
 
     if not post:
@@ -106,6 +117,9 @@ def user_posts_page(
     )
 
 
+# ---------------- USERS API ---------------- #
+
+
 @app.post(
     "/api/users",
     response_model=UserResponse,
@@ -151,7 +165,7 @@ def create_user(
     return new_user
 
 
-@app.get("/api/user/{user_id}", response_model=UserResponse)
+@app.get("/api/users/{user_id}", response_model=UserResponse)
 def get_user(
     user_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -167,6 +181,93 @@ def get_user(
         )
 
     return user
+
+
+@app.patch("/api/users/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: int,
+    user_update: UserUpdate,
+    db: Annotated[Session, Depends(get_db)],
+):
+    user = db.execute(
+        select(models.User).where(models.User.id == user_id)
+    ).scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Username validation
+    if (
+        user_update.username is not None
+        and user_update.username != user.username
+    ):
+        existing_user = db.execute(
+            select(models.User).where(
+                models.User.username == user_update.username
+            )
+        ).scalars().first()
+
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists",
+            )
+
+        user.username = user_update.username
+
+    # Email validation
+    if (
+        user_update.email is not None
+        and user_update.email != user.email
+    ):
+        existing_email = db.execute(
+            select(models.User).where(
+                models.User.email == user_update.email
+            )
+        ).scalars().first()
+
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists",
+            )
+
+        user.email = user_update.email
+
+    # Image update
+    if user_update.image_file is not None:
+        user.image_file = user_update.image_file
+
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+@app.delete("/api/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)]
+):
+    result = db.execute(
+        select(models.User).where(models.User.id == user_id)
+    )
+
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    db.delete(user)
+    db.commit()
+
+
+# ---------------- POSTS API ---------------- #
 
 
 @app.post(
@@ -192,6 +293,7 @@ def create_post(
         title=post.title,
         content=post.content,
         user_id=post.user_id,
+        date_posted=datetime.now(UTC),
     )
 
     db.add(new_post)
@@ -207,7 +309,9 @@ def get_post(
     db: Annotated[Session, Depends(get_db)],
 ):
     post = db.execute(
-        select(models.Post).where(models.Post.id == post_id)
+        select(models.Post)
+        .options(joinedload(models.Post.author))
+        .where(models.Post.id == post_id)
     ).scalars().first()
 
     if not post:
@@ -217,6 +321,100 @@ def get_post(
         )
 
     return post
+
+
+@app.put("/api/posts/{post_id}", response_model=PostResponse)
+def update_post_full(
+    post_id: int,
+    post_data: PostCreate,
+    db: Annotated[Session, Depends(get_db)],
+):
+    post = db.execute(
+        select(models.Post)
+        .options(joinedload(models.Post.author))
+        .where(models.Post.id == post_id)
+    ).scalar_one_or_none()
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found",
+        )
+
+    if post_data.user_id != post.user_id:
+        user = db.execute(
+            select(models.User).where(
+                models.User.id == post_data.user_id
+            )
+        ).scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+    post.title = post_data.title
+    post.content = post_data.content
+    post.user_id = post_data.user_id
+
+    db.commit()
+    db.refresh(post)
+
+    return post
+
+
+@app.patch("/api/posts/{post_id}", response_model=PostResponse)
+def update_post_partial(
+    post_id: int,
+    post_data: PostUpdate,
+    db: Annotated[Session, Depends(get_db)],
+):
+    post = db.execute(
+        select(models.Post)
+        .options(joinedload(models.Post.author))
+        .where(models.Post.id == post_id)
+    ).scalar_one_or_none()
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found",
+        )
+
+    update_data = post_data.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+        setattr(post, field, value)
+
+    db.commit()
+    db.refresh(post)
+
+    return post
+
+
+@app.delete(
+    "/api/posts/{post_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_post(
+    post_id: int,
+    db: Annotated[Session, Depends(get_db)],
+):
+    post = db.execute(
+        select(models.Post)
+        .options(joinedload(models.Post.author))
+        .where(models.Post.id == post_id)
+    ).scalar_one_or_none()
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found",
+        )
+
+    db.delete(post)
+    db.commit()
 
 
 @app.get(
@@ -238,10 +436,15 @@ def get_user_posts(
         )
 
     posts = db.execute(
-        select(models.Post).where(models.Post.user_id == user_id)
+        select(models.Post)
+        .options(joinedload(models.Post.author))
+        .where(models.Post.user_id == user_id)
     ).scalars().all()
 
     return posts
+
+
+# ---------------- EXCEPTION HANDLERS ---------------- #
 
 
 @app.exception_handler(StarletteHTTPException)
