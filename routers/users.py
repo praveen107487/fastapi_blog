@@ -1,12 +1,13 @@
 from typing import Annotated
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
 from database import get_db
-from schemas import UserCreate, UserResponse, UserUpdate
+from schemas import UserCreate, UserPublic, UserPrivate, UserUpdate, Token
+from auth import creat_acces_token, hash_password, oauth2_scheme, verify_password, verify_acces_token
 
 router = APIRouter()
 
@@ -32,9 +33,35 @@ async def get_user_or_404(
     return user
 
 
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)]
+) -> models.User:
+    email = verify_acces_token(token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    user = (
+        await db.execute(
+            select(models.User).where(func.lower(models.User.email) == email.lower())
+        )
+    ).scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="User not found"
+        )
+    return user
+
+
 @router.post(
     "",
-    response_model=UserResponse,
+    response_model=UserPrivate,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_user(
@@ -44,7 +71,7 @@ async def create_user(
     existing_user = (
         await db.execute(
             select(models.User).where(
-                models.User.username == user.username
+                func.lower(models.User.username) == user.username.lower()
             )
         )
     ).scalar_one_or_none()
@@ -58,7 +85,7 @@ async def create_user(
     existing_email = (
         await db.execute(
             select(models.User).where(
-                models.User.email == user.email
+                func.lower(models.User.email) == user.email.lower()
             )
         )
     ).scalar_one_or_none()
@@ -71,20 +98,46 @@ async def create_user(
 
     new_user = models.User(
         username=user.username,
-        email=user.email,
+        email=user.email.lower(),
+        password_hash=hash_password(user.password)
     )
 
     db.add(new_user)
-
     await db.commit()
     await db.refresh(new_user)
 
     return new_user
 
 
+@router.post("/token", response_model=Token)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    result = await db.execute(
+        select(models.User).where(func.lower(models.User.email) == form_data.username.lower())
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user or not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token = creat_acces_token(data={"sub": user.email})
+    return Token(access_token=access_token, token_type="bearer")
+
+
+@router.get("/me", response_model=UserPrivate)
+async def get_me(current_user: Annotated[models.User, Depends(get_current_user)]):
+    return current_user
+
+
 @router.get(
     "/{user_id}",
-    response_model=UserResponse,
+    response_model=UserPublic,
 )
 async def get_user(
     user_id: int,
@@ -95,7 +148,7 @@ async def get_user(
 
 @router.patch(
     "/{user_id}",
-    response_model=UserResponse,
+    response_model=UserPublic,
 )
 async def update_user(
     user_id: int,
@@ -164,7 +217,6 @@ async def delete_user(
     user = await get_user_or_404(user_id, db)
 
     await db.delete(user)
-
     await db.commit()
 
     return None
