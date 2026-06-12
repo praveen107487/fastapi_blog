@@ -47,7 +47,6 @@ def format_datetime(value, format_str="%b %d, %Y at %I:%M %p"):
     """
     Formatting filter for cleaner timestamps in HTML views.
     """
-
     if not value:
         return ""
 
@@ -189,6 +188,35 @@ async def user_posts_page(
             "title": f"{user.username}'s Posts",
         },
     )
+
+
+@app.get("/login", include_in_schema=False, name="login_page")
+async def login_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={
+            "title": "Login"
+        }
+    )
+
+
+@app.get("/register", include_in_schema=False, name="register_page")
+async def register_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="register.html",
+        context={
+            "title": "Register"
+        }
+    )
+
+
+# Added fallback named route to prevent template execution runtime errors
+@app.get("/forgot-password", include_in_schema=False, name="forgot_password_page")
+async def forgot_password_page(request: Request):
+    return JSONResponse(content={"detail": "Password reset page coming soon."})
+
 
 # ==========================================
 #         GLOBAL EXCEPTION HANDLERS

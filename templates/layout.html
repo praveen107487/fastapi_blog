@@ -1,529 +1,273 @@
-```html id="5rks1t"
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-
     <meta charset="utf-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     {% if title %}
         <title>FastAPI Blog - {{ title }}</title>
     {% else %}
         <title>FastAPI Blog</title>
     {% endif %}
-
-    <meta name="description"
-          content="FastAPI Tutorial">
-
-    <meta name="author"
-          content="Corey Schafer">
-
-    <link rel="preconnect"
-          href="https://fonts.googleapis.com">
-
-    <link rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossorigin>
-
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&family=Nunito:wght@200..1000&display=swap"
-          rel="stylesheet">
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
-
-    <link rel="stylesheet"
-          type="text/css"
-          href="{{ url_for('static', path='css/main.css') }}">
-
+    <meta name="description" content="FastAPI Tutorial">
+    <meta name="author" content="Corey Schafer">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&family=Nunito:wght@200..1000&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='css/main.css') }}">
 </head>
 
 <body class="d-flex flex-column min-vh-100">
 
 <header class="site-header">
-
-    <nav class="navbar navbar-expand-md bg-steel fixed-top"
-         data-bs-theme="dark">
-
+    <nav class="navbar navbar-expand-md bg-steel fixed-top" data-bs-theme="dark">
         <div class="container">
-
-            <a class="navbar-brand me-4"
-               href="{{ url_for('home') }}">
-
-                FastAPI Blog
-
-            </a>
-
-            <button class="navbar-toggler"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#navbarToggle">
-
+            <a class="navbar-brand me-4" href="{{ url_for('home') }}">FastAPI Blog</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggle">
                 <span class="navbar-toggler-icon"></span>
-
             </button>
-
-            <div class="collapse navbar-collapse"
-                 id="navbarToggle">
-
-                <!-- LEFT NAV -->
-
+            <div class="collapse navbar-collapse" id="navbarToggle">
                 <div class="navbar-nav me-auto">
-
-                    <a class="nav-link active"
-                       href="{{ url_for('home') }}">
-
-                        Home
-
-                    </a>
-
+                    <a class="nav-link active" href="{{ url_for('home') }}">Home</a>
                 </div>
-
-
-                <!-- RIGHT NAV -->
-
                 <div class="navbar-nav">
-
-                    <div id="loggedOutNav"
-                         class="d-flex align-items-center">
-
-                        <!-- NEW POST BUTTON -->
-
-                        <button class="btn btn-outline-light mb-2 mb-md-0 me-md-2"
-                                type="button"
-                                data-bs-toggle="modal"
-                                data-bs-target="#createPostModal">
-
-                            + New Post
-
-                        </button>
-
-                        <!-- LOGIN BUTTON -->
-
-                        <a class="btn btn-outline-light mb-2 mb-md-0 me-md-2"
-                           href="/login">
-
-                            Login
-
-                        </a>
-
-                        <!-- REGISTER BUTTON -->
-
-                        <a class="btn btn-light mb-2 mb-md-0 me-md-3"
-                           href="/register">
-
-                            Register
-
-                        </a>
-
+                    <div id="authNav" class="d-flex align-items-center flex-column flex-md-row">
+                        <div id="loggedOutNav" class="d-flex align-items-center">
+                            <a class="btn btn-outline-light mb-2 mb-md-0 me-md-2" href="/login">Login</a>
+                            <a class="btn btn-light mb-2 mb-md-0 me-md-3" href="/register">Register</a>
+                        </div>
                     </div>
-
-                    <!-- THEME DROPDOWN -->
-
                     <div class="nav-item dropdown">
-
-                        <a class="nav-link dropdown-toggle"
-                           href="#"
-                           role="button"
-                           id="bd-theme"
-                           data-bs-toggle="dropdown">
-
-                            <span id="bd-theme-text">
-                                🌗 Auto
-                            </span>
-
+                        <a class="nav-link dropdown-toggle" href="#" role="button" id="bd-theme" data-bs-toggle="dropdown">
+                            <span id="bd-theme-text">🌗 Auto</span>
                         </a>
-
                         <ul class="dropdown-menu dropdown-menu-end">
-
-                            <li>
-
-                                <button class="dropdown-item"
-                                        type="button"
-                                        data-bs-theme-value="light">
-
-                                    🌝 Light
-
-                                </button>
-
-                            </li>
-
-                            <li>
-
-                                <button class="dropdown-item"
-                                        type="button"
-                                        data-bs-theme-value="dark">
-
-                                    🌚 Dark
-
-                                </button>
-
-                            </li>
-
-                            <li>
-
-                                <button class="dropdown-item"
-                                        type="button"
-                                        data-bs-theme-value="auto">
-
-                                    🌗 Auto
-
-                                </button>
-
-                            </li>
-
+                            <li><button class="dropdown-item" type="button" data-bs-theme-value="light">🌝 Light</button></li>
+                            <li><button class="dropdown-item" type="button" data-bs-theme-value="dark">🌚 Dark</button></li>
+                            <li><button class="dropdown-item" type="button" data-bs-theme-value="auto">🌗 Auto</button></li>
                         </ul>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
     </nav>
-
 </header>
 
-
-
-<main role="main"
-      class="container">
-
+<main role="main" class="container">
     <div class="row">
-
         <div class="col-md-8">
-
             {% block content %}
             {% endblock content %}
-
         </div>
-
         <aside class="col-md-4">
-
             <div class="content-section py-3 px-4 mb-4">
-
                 <h3>Our Sidebar</h3>
-
-                <p class="text-body-secondary">
-
-                    You can put any information here you'd like.
-
-                </p>
-
+                <p class="text-body-secondary">You can put any information here you'd like.</p>
                 <ul class="list-group">
-
-                    <li class="list-group-item">
-                        Latest Posts
-                    </li>
-
-                    <li class="list-group-item">
-                        Announcements
-                    </li>
-
-                    <li class="list-group-item">
-                        Calendars
-                    </li>
-
-                    <li class="list-group-item">
-                        etc
-                    </li>
-
+                    <li class="list-group-item">Latest Posts</li>
+                    <li class="list-group-item">Announcements</li>
+                    <li class="list-group-item">Calendars</li>
+                    <li class="list-group-item">etc</li>
                 </ul>
-
             </div>
-
         </aside>
-
     </div>
-
 </main>
 
-
-
-<!-- CREATE POST MODAL -->
-
-<div class="modal fade"
-     id="createPostModal"
-     tabindex="-1"
-     aria-hidden="true">
-
+<div class="modal fade" id="createPostModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-
         <div class="modal-content">
-
             <div class="modal-header">
-
-                <h5 class="modal-title">
-
-                    Create New Post
-
-                </h5>
-
-                <button type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal">
-                </button>
-
+                <h5 class="modal-title">Create New Post</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-
             <form id="createPostForm">
-
                 <div class="modal-body">
-
                     <div class="mb-3">
-
-                        <label for="postTitle"
-                               class="form-label">
-
-                            Title
-
-                        </label>
-
-                        <input type="text"
-                               class="form-control"
-                               id="postTitle"
-                               required>
-
+                        <label for="postTitle" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="postTitle" required>
                     </div>
-
                     <div class="mb-3">
-
-                        <label for="postContent"
-                               class="form-label">
-
-                            Content
-
-                        </label>
-
-                        <textarea class="form-control"
-                                  id="postContent"
-                                  rows="5"
-                                  required></textarea>
-
+                        <label for="postContent" class="form-label">Content</label>
+                        <textarea class="form-control" id="postContent" rows="5" required></textarea>
                     </div>
-
                 </div>
-
                 <div class="modal-footer">
-
-                    <button type="button"
-                            class="btn btn-outline-secondary"
-                            data-bs-dismiss="modal">
-
-                        Cancel
-
-                    </button>
-
-                    <button type="submit"
-                            class="btn btn-primary">
-
-                        Create Post
-
-                    </button>
-
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Post</button>
                 </div>
-
             </form>
-
         </div>
-
     </div>
-
 </div>
 
+<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Error Encountered</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="errorMessage">An unexpected issue occurred.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Action Successful</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="successMessage">Operation completed successfully.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <footer class="mt-auto py-3 bg-body-tertiary border-top">
-
     <div class="container text-center">
-
-        <p class="text-body-secondary mb-0">
-
-            © <span id="year"></span> Corey Schafer
-
-        </p>
-
+        <p class="text-body-secondary mb-0">© <span id="year"></span> Corey Schafer</p>
     </div>
-
 </footer>
 
-
-
-<script>
-
-    document.getElementById("year").textContent =
-        new Date().getFullYear();
-
-</script>
-
-
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
-</script>
-
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+    let currentUser = null;
 
-    const setTheme = (theme) => {
+    async function updateNavbarState() {
+        const token = localStorage.getItem("access_token");
+        const authNav = document.getElementById("authNav");
 
-        if (theme === "auto") {
-
-            document.documentElement.setAttribute(
-                "data-bs-theme",
-
-                window.matchMedia(
-                    "(prefers-color-scheme: dark)"
-                ).matches ? "dark" : "light"
-            );
-
-        } else {
-
-            document.documentElement.setAttribute(
-                "data-bs-theme",
-                theme
-            );
-
-        }
-
-        localStorage.setItem("theme", theme);
-
-        const themeText = {
-
-            light: "🌝 Light",
-            dark: "🌚 Dark",
-            auto: "🌗 Auto"
-
-        };
-
-        document.getElementById("bd-theme-text")
-            .textContent = themeText[theme];
-
-    };
-
-
-    document.querySelectorAll("[data-bs-theme-value]")
-        .forEach(button => {
-
-            button.addEventListener("click", () => {
-
-                setTheme(
-                    button.getAttribute("data-bs-theme-value")
-                );
-
-            });
-
-        });
-
-
-    setTheme(
-        localStorage.getItem("theme") || "auto"
-    );
-
-</script>
-
-
-
-<script>
-
-    const createPostForm =
-        document.getElementById("createPostForm");
-
-
-    createPostForm.addEventListener(
-        "submit",
-        async (e) => {
-
-            e.preventDefault();
-
-            const title =
-                document.getElementById("postTitle")
-                .value
-                .trim();
-
-            const content =
-                document.getElementById("postContent")
-                .value
-                .trim();
-
-
-            if (!title || !content) {
-
-                alert("Please fill all fields");
-
-                return;
-
-            }
-
-
+        if (token) {
             try {
+                const response = await fetch("/api/users/me", {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
 
-                const response =
-                    await fetch("/api/posts", {
-
-                        method: "POST",
-
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-
-                        body: JSON.stringify({
-
-                            title: title,
-                            content: content,
-                            user_id: null
-
-                        })
-
+                if (response.ok) {
+                    currentUser = await response.json();
+                    authNav.innerHTML = `
+                        <button class="btn btn-outline-light mb-2 mb-md-0 me-md-2" type="button" data-bs-toggle="modal" data-bs-target="#createPostModal">+ New Post</button>
+                        <span class="text-light me-md-3 mb-2 mb-md-0">Hello, <strong>${currentUser.username}</strong></span>
+                        <button class="btn btn-sm btn-danger mb-2 mb-md-0 me-md-3" id="logoutBtn">Logout</button>
+                    `;
+                    
+                    document.getElementById("logoutBtn").addEventListener("click", () => {
+                        localStorage.removeItem("access_token");
+                        window.location.href = "/";
                     });
 
-
-                if (!response.ok) {
-
-                    const errorData =
-                        await response.json();
-
-                    throw new Error(
-                        errorData.detail || "Failed to create post"
-                    );
-
+                    if (typeof onUserSessionVerified === "function") {
+                        onUserSessionVerified(currentUser);
+                    }
+                    return;
                 }
-
-
-                createPostForm.reset();
-
-
-                const modalElement =
-                    document.getElementById("createPostModal");
-
-                const modal =
-                    bootstrap.Modal.getInstance(modalElement);
-
-                modal.hide();
-
-
-                location.reload();
-
-            } catch (error) {
-
-                alert(error.message);
-
+            } catch (err) {
+                console.error("Failed parsing auth profile", err);
             }
-
+            localStorage.removeItem("access_token");
         }
-    );
 
+        authNav.innerHTML = `
+            <div id="loggedOutNav" class="d-flex align-items-center">
+                <a class="btn btn-outline-light mb-2 mb-md-0 me-md-2" href="/login">Login</a>
+                <a class="btn btn-light mb-2 mb-md-0 me-md-3" href="/register">Register</a>
+            </div>
+        `;
+        if (typeof onUserSessionVerified === "function") {
+            onUserSessionVerified(null);
+        }
+    }
+
+    updateNavbarState();
 </script>
 
+<script>
+    const setTheme = (theme) => {
+        if (theme === "auto") {
+            document.documentElement.setAttribute(
+                "data-bs-theme",
+                window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+            );
+        } else {
+            document.documentElement.setAttribute("data-bs-theme", theme);
+        }
+        localStorage.setItem("theme", theme);
+        const themeText = { light: "🌝 Light", dark: "🌚 Dark", auto: "🌗 Auto" };
+        document.getElementById("bd-theme-text").textContent = themeText[theme];
+    };
 
+    document.querySelectorAll("[data-bs-theme-value]").forEach(button => {
+        button.addEventListener("click", () => {
+            setTheme(button.getAttribute("data-bs-theme-value"));
+        });
+    });
+    setTheme(localStorage.getItem("theme") || "auto");
+</script>
+
+<script>
+    const createPostForm = document.getElementById("createPostForm");
+    createPostForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem("access_token");
+
+        if (!token || !currentUser) {
+            alert("You must be logged in to create a post.");
+            return;
+        }
+
+        const title = document.getElementById("postTitle").value.trim();
+        const content = document.getElementById("postContent").value.trim();
+
+        if (!title || !content) {
+            alert("Please fill all fields");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/posts", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    title: title,
+                    content: content,
+                    user_id: currentUser.id
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Failed to create post");
+            }
+
+            createPostForm.reset();
+            bootstrap.Modal.getInstance(document.getElementById("createPostModal")).hide();
+            location.reload();
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+</script>
 
 {% block scripts %}
 {% endblock scripts %}
-
 </body>
-
 </html>
