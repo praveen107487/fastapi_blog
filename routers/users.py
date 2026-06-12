@@ -1,15 +1,20 @@
+import os
+import uuid
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
 from database import get_db
-from schemas import UserCreate, UserPublic, UserPrivate, UserUpdate, Token
+from schemas import UserCreate, UserPublic, UserPrivate, UserUpdate, Token, UpdatePasswordSchema
 from auth import creat_acces_token, hash_password, oauth2_scheme, verify_password, verify_acces_token
 
 router = APIRouter()
+
+UPLOAD_DIR = "media/profile_pics"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 async def get_user_or_404(
@@ -127,11 +132,54 @@ async def login_for_access_token(
         )
     
     access_token = creat_acces_token(data={"sub": user.email})
+
     return Token(access_token=access_token, token_type="bearer")
 
 
 @router.get("/me", response_model=UserPrivate)
 async def get_me(current_user: Annotated[models.User, Depends(get_current_user)]):
+    return current_user
+
+
+@router.patch("/me/password", status_code=status.HTTP_200_OK)
+async def update_password(
+    data: UpdatePasswordSchema,
+    current_user: Annotated[models.User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    if not verify_password(data.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect old password verification context."
+        )
+    current_user.password_hash = hash_password(data.new_password)
+    await db.commit()
+    return {"detail": "Password modified successfully."}
+
+
+@router.patch("/{user_id}/picture", response_model=UserPrivate)
+async def update_profile_picture(
+    user_id: int,
+    current_user: Annotated[models.User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...)
+):
+    if user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized action context.")
+    
+    ext = os.path.splitext(file.filename)[1]
+    if ext.lower() not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported format asset pattern.")
+
+    unique_filename = f"{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    current_user.image_file = unique_filename
+    await db.commit()
+    await db.refresh(current_user)
     return current_user
 
 
@@ -148,14 +196,18 @@ async def get_user(
 
 @router.patch(
     "/{user_id}",
-    response_model=UserPublic,
+    response_model=UserPrivate,
 )
 async def update_user(
     user_id: int,
     user_update: UserUpdate,
-    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    user = await get_user_or_404(user_id, db)
+    if user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access Forbidden.")
+
+    user = current_user
 
     if (
         user_update.username is not None
@@ -197,9 +249,6 @@ async def update_user(
 
         user.email = user_update.email
 
-    if user_update.image_file is not None:
-        user.image_file = user_update.image_file
-
     await db.commit()
     await db.refresh(user)
 
@@ -212,11 +261,12 @@ async def update_user(
 )
 async def delete_user(
     user_id: int,
-    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    user = await get_user_or_404(user_id, db)
+    if user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access Forbidden.")
 
-    await db.delete(user)
+    await db.delete(current_user)
     await db.commit()
-
     return None

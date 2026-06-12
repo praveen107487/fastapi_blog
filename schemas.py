@@ -73,3 +73,6 @@ class PostResponse(PostBase):
     user_id: int
     date_posted: datetime
     author: UserPublic
+class UpdatePasswordSchema(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=16)

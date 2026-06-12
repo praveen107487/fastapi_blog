@@ -112,6 +112,13 @@ async def home(
         },
     )
 
+@app.get("/account", include_in_schema=False, name="account_page")
+async def account_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="account.html",
+        context={"title": "Account Settings"}
+    )
 
 @app.get(
     "/posts/{post_id}",
