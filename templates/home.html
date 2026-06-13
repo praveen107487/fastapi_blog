@@ -20,7 +20,6 @@
     const loadMoreBtn = document.getElementById("loadMoreBtn");
     const loadingSpinner = document.getElementById("loadingSpinner");
 
-    // Formatter mimicking your native Jinja filter rules
     function formatTextSnippet(text, maxLength = 150) {
         if (!text) return "";
         if (text.length <= maxLength) return text;
@@ -53,7 +52,6 @@
                 return;
             }
 
-            // Append cards inside the container workspace
             fetchedPosts.forEach(post => {
                 const authorImg = post.author?.image_path ? post.author.image_path : '/static/profile_pics/default.jpg';
                 const truncatedBody = formatTextSnippet(post.content);
@@ -83,9 +81,10 @@
 
             currentOffset += fetchedPosts.length;
 
-            // Check if there are more records left to load
             if (currentOffset < totalRecords) {
                 loadMoreBtn.classList.remove("d-none");
+            } else {
+                loadMoreBtn.classList.add("d-none");
             }
         } catch (error) {
             console.error("Failed fetching pagination chunk:", error);
@@ -95,7 +94,6 @@
         }
     }
 
-    // Trigger initial chunk retrieval on first page load
     loadMoreBtn.onclick = fetchAndAppendPosts;
     fetchAndAppendPosts();
 </script>

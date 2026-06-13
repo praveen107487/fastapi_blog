@@ -73,9 +73,18 @@ class PostResponse(PostBase):
     user_id: int
     date_posted: datetime
     author: UserPublic
-class UpdatePasswordSchema(BaseModel):
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr = Field(max_length=120)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8)
+
+
+class ChangePasswordRequest(BaseModel):
     current_password: str
-    new_password: str = Field(min_length=8, max_length=16)
+    new_password: str = Field(min_length=8)
     
 class PaginatedPostResponse(BaseModel):
     items: list[PostResponse]
