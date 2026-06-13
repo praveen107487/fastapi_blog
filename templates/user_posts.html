@@ -3,31 +3,103 @@
 {% block content %}
     <h1 class="mb-4">Posts by {{ user.username if user else "User" }}</h1>
     
-    <div id="postsContainer">
-        {% for post in posts %}
-            <article class="content-section py-3 px-4 mb-4">
-                <div class="d-flex align-items-start gap-4">
-                    <img class="rounded-circle article-img flex-shrink-0"
-                         src="{{ post.author.image_path if post.author.image_path else url_for('static', path='profile_pics/default.jpg') }}"
-                         alt="{{ post.author.username }}'s profile picture"
-                         width="64"
-                         height="64"
-                         loading="lazy">
+    <div id="postsContainer"></div>
 
-                    <div class="flex-grow-1">
-                        <div class="article-metadata mb-2">
-                            <a class="me-2" href="/users/{{ post.author.id }}/posts">{{ post.author.username }}</a>
-                            <small class="text-body-secondary">{{ post.date_posted | datetimeformat }}</small>
-                        </div>
-                        <h2>
-                            <a class="article-title" href="/posts/{{ post.id }}">{{ post.title }}</a>
-                        </h2>
-                        <p class="article-content">{{ post.content }}</p>
-                    </div>
-                </div>
-            </article>
-        {% else %}
-            <p class="text-body-secondary">No posts by this user yet.</p>
-        {% endfor %}
+    <div class="text-center my-4">
+        <button id="loadMoreBtn" class="btn btn-outline-primary px-4 d-none">Load More</button>
+        <div id="loadingSpinner" class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
 {% endblock content %}
+
+{% block scripts %}
+<script>
+    // Pull the targeted user context constraint from your server engine path parameters
+    const targetUserId = parseInt(window.location.pathname.split("/")[2]);
+    
+    let currentOffset = 0;
+    const itemsLimit = 5;
+
+    const postsContainer = document.getElementById("postsContainer");
+    const loadMoreBtn = document.getElementById("loadMoreBtn");
+    const loadingSpinner = document.getElementById("loadingSpinner");
+
+    function formatTextSnippet(text, maxLength = 150) {
+        if (!text) return "";
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength).trim() + "...";
+    }
+
+    function formatCustomDate(dateString) {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) + 
+               " at " + 
+               date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+
+    async function fetchUserTimeline() {
+        loadMoreBtn.classList.add("d-none");
+        loadingSpinner.classList.remove("d-none");
+
+        try {
+            // Note: The user-specific endpoint yields a raw array directly, so we chunk it manually on the client side
+            const response = await fetch(`/api/posts/user/${targetUserId}?limit=100&offset=0`);
+            if (!response.ok) throw new Error("Could not resolve user timeline data.");
+            
+            const totalUserPosts = await response.json();
+            
+            if (totalUserPosts.length === 0) {
+                postsContainer.innerHTML = `<p class="text-body-secondary">No posts by this user yet.</p>`;
+                loadingSpinner.classList.add("d-none");
+                return;
+            }
+
+            // Slice out the exact current data window from the array
+            const executionSlice = totalUserPosts.slice(currentOffset, currentOffset + itemsLimit);
+
+            executionSlice.forEach(post => {
+                const authorImg = post.author?.image_path ? post.author.image_path : '/static/profile_pics/default.jpg';
+                const truncatedBody = formatTextSnippet(post.content);
+                const readableDate = formatCustomDate(post.date_posted);
+
+                const articleHtml = `
+                    <article class="content-section py-3 px-4 mb-4">
+                        <div class="d-flex align-items-start gap-4">
+                            <img class="rounded-circle article-img flex-shrink-0"
+                                 src="${authorImg}"
+                                 alt="Profile Picture" width="64" height="64" loading="lazy">
+                            <div class="flex-grow-1">
+                                <div class="article-metadata mb-2">
+                                    <span class="fw-bold text-primary me-2">${post.author?.username}</span>
+                                    <small class="text-body-secondary">${readableDate}</small>
+                                </div>
+                                <h2>
+                                    <a class="article-title" href="/posts/${post.id}">${post.title}</a>
+                                </h2>
+                                <p class="article-content text-break">${truncatedBody}</p>
+                            </div>
+                        </div>
+                    </article>
+                `;
+                postsContainer.insertAdjacentHTML("beforeend", articleHtml);
+            });
+
+            currentOffset += executionSlice.length;
+
+            if (currentOffset < totalUserPosts.length) {
+                loadMoreBtn.classList.remove("d-none");
+            }
+        } catch (error) {
+            console.error("Timeline processing exception error:", error);
+            postsContainer.insertAdjacentHTML("beforeend", `<div class="alert alert-danger">Error updating profile feed.</div>`);
+        } finally {
+            loadingSpinner.classList.add("d-none");
+        }
+    }
+
+    loadMoreBtn.onclick = fetchUserTimeline;
+    fetchUserTimeline();
+</script>
+{% endblock scripts %}

@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -12,6 +12,7 @@ from schemas import (
     PostCreate,
     PostResponse,
     PostUpdate,
+    PaginatedPostResponse,
 )
 from routers.users import get_current_user
 
@@ -58,6 +59,35 @@ async def get_user_or_404(
         )
 
     return user
+
+
+@router.get(
+    "",
+    response_model=PaginatedPostResponse,
+)
+async def get_all_posts(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=5, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    total_result = await db.execute(select(func.count(models.Post.id)))
+    total_posts = total_result.scalar_one()
+
+    result = await db.execute(
+        select(models.Post)
+        .options(joinedload(models.Post.author))
+        .order_by(models.Post.date_posted.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    posts = result.scalars().all()
+
+    return {
+        "items": posts,
+        "total": total_posts,
+        "limit": limit,
+        "offset": offset
+    }
 
 
 @router.post(

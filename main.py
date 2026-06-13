@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
@@ -44,9 +44,6 @@ templates = Jinja2Templates(directory="templates")
 
 
 def format_datetime(value, format_str="%b %d, %Y at %I:%M %p"):
-    """
-    Formatting filter for cleaner timestamps in HTML views.
-    """
     if not value:
         return ""
 
@@ -91,25 +88,12 @@ app.include_router(
 
 @app.get("/", include_in_schema=False, name="home")
 @app.get("/posts", include_in_schema=False, name="posts")
-async def home(
-    request: Request,
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    result = await db.execute(
-        select(models.Post).options(
-            selectinload(models.Post.author)
-        )
-    )
-
-    posts_db = result.scalars().all()
-
+async def home(request: Request):
+    # Pass an empty shell context; JavaScript will take over loading elements dynamically
     return templates.TemplateResponse(
         request=request,
         name="home.html",
-        context={
-            "posts": posts_db,
-            "title": "Home",
-        },
+        context={"title": "Home"},
     )
 
 @app.get("/account", include_in_schema=False, name="account_page")
@@ -166,9 +150,7 @@ async def user_posts_page(
 ):
     user = (
         await db.execute(
-            select(models.User).where(
-                models.User.id == user_id
-            )
+            select(models.User).where(models.User.id == user_id)
         )
     ).scalars().first()
 
@@ -178,20 +160,11 @@ async def user_posts_page(
             detail="User not found",
         )
 
-    posts_db = (
-        await db.execute(
-            select(models.Post)
-            .options(joinedload(models.Post.author))
-            .where(models.Post.user_id == user_id)
-        )
-    ).scalars().all()
-
     return templates.TemplateResponse(
         request=request,
         name="user_posts.html",
         context={
             "user": user,
-            "posts": posts_db,
             "title": f"{user.username}'s Posts",
         },
     )
@@ -202,9 +175,7 @@ async def login_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="login.html",
-        context={
-            "title": "Login"
-        }
+        context={"title": "Login"}
     )
 
 
@@ -213,13 +184,10 @@ async def register_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="register.html",
-        context={
-            "title": "Register"
-        }
+        context={"title": "Register"}
     )
 
 
-# Added fallback named route to prevent template execution runtime errors
 @app.get("/forgot-password", include_in_schema=False, name="forgot_password_page")
 async def forgot_password_page(request: Request):
     return JSONResponse(content={"detail": "Password reset page coming soon."})

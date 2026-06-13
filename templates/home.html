@@ -1,25 +1,102 @@
 {% extends "layout.html" %}
 
 {% block content %}
-    <div id="postsContainer">
-        {% for post in posts %}
-            <article class="content-section py-3 px-4 mb-4">
-                <div class="d-flex align-items-start gap-4">
-                    <img class="rounded-circle article-img flex-shrink-0"
-                         src="{{ post.author.image_path if post.author.image_path else url_for('static', path='profile_pics/default.jpg') }}"
-                         alt="Profile Picture" width="64" height="64">
-                    <div class="flex-grow-1">
-                        <div class="article-metadata mb-2">
-                            <a class="me-2" href="/users/{{ post.author.id }}/posts">{{ post.author.username }}</a>
-                            <small class="text-body-secondary">{{ post.date_posted | datetimeformat }}</small>
-                        </div>
-                        <h2>
-                            <a class="article-title" href="/posts/{{ post.id }}">{{ post.title }}</a>
-                        </h2>
-                        <p class="article-content">{{ post.content }}</p>
-                    </div>
-                </div>
-            </article>
-        {% endfor %}
+    <div id="postsContainer"></div>
+
+    <div class="text-center my-4">
+        <button id="loadMoreBtn" class="btn btn-outline-primary px-4 d-none">Load More</button>
+        <div id="loadingSpinner" class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
 {% endblock content %}
+
+{% block scripts %}
+<script>
+    let currentOffset = 0;
+    const itemsLimit = 5;
+
+    const postsContainer = document.getElementById("postsContainer");
+    const loadMoreBtn = document.getElementById("loadMoreBtn");
+    const loadingSpinner = document.getElementById("loadingSpinner");
+
+    // Formatter mimicking your native Jinja filter rules
+    function formatTextSnippet(text, maxLength = 150) {
+        if (!text) return "";
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength).trim() + "...";
+    }
+
+    function formatCustomDate(dateString) {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) + 
+               " at " + 
+               date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+
+    async function fetchAndAppendPosts() {
+        loadMoreBtn.classList.add("d-none");
+        loadingSpinner.classList.remove("d-none");
+
+        try {
+            const response = await fetch(`/api/posts?limit=${itemsLimit}&offset=${currentOffset}`);
+            if (!response.ok) throw new Error("Could not load posts array payload.");
+            
+            const data = await response.json();
+            const fetchedPosts = data.items;
+            const totalRecords = data.total;
+
+            if (fetchedPosts.length === 0 && currentOffset === 0) {
+                postsContainer.innerHTML = `<div class="alert alert-info">No posts found yet. Be the first to create one!</div>`;
+                loadingSpinner.classList.add("d-none");
+                return;
+            }
+
+            // Append cards inside the container workspace
+            fetchedPosts.forEach(post => {
+                const authorImg = post.author?.image_path ? post.author.image_path : '/static/profile_pics/default.jpg';
+                const truncatedBody = formatTextSnippet(post.content);
+                const readableDate = formatCustomDate(post.date_posted);
+
+                const articleHtml = `
+                    <article class="content-section py-3 px-4 mb-4">
+                        <div class="d-flex align-items-start gap-4">
+                            <img class="rounded-circle article-img flex-shrink-0"
+                                 src="${authorImg}"
+                                 alt="Profile Picture" width="64" height="64">
+                            <div class="flex-grow-1">
+                                <div class="article-metadata mb-2">
+                                    <a class="me-2" href="/users/${post.author?.id}/posts">${post.author?.username}</a>
+                                    <small class="text-body-secondary">${readableDate}</small>
+                                </div>
+                                <h2>
+                                    <a class="article-title" href="/posts/${post.id}">${post.title}</a>
+                                </h2>
+                                <p class="article-content text-break">${truncatedBody}</p>
+                            </div>
+                        </div>
+                    </article>
+                `;
+                postsContainer.insertAdjacentHTML("beforeend", articleHtml);
+            });
+
+            currentOffset += fetchedPosts.length;
+
+            // Check if there are more records left to load
+            if (currentOffset < totalRecords) {
+                loadMoreBtn.classList.remove("d-none");
+            }
+        } catch (error) {
+            console.error("Failed fetching pagination chunk:", error);
+            postsContainer.insertAdjacentHTML("beforeend", `<div class="alert alert-danger">Error fetching supplementary records.</div>`);
+        } finally {
+            loadingSpinner.classList.add("d-none");
+        }
+    }
+
+    // Trigger initial chunk retrieval on first page load
+    loadMoreBtn.onclick = fetchAndAppendPosts;
+    fetchAndAppendPosts();
+</script>
+{% endblock scripts %}
