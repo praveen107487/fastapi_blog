@@ -17,4 +17,6 @@ dependencies = [
     "pyjwt>=2.13.0",
     "pydantic-settings>=2.14.1",
     "aiosmtplib>=5.1.1",
+    "psycopg[binary]>=3.3.4",
+    "alembic>=1.18.4",
 ]

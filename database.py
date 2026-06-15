@@ -1,24 +1,17 @@
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from config import settings
 
-
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///blog.db"
-
-
+# Active asynchronous connection pipe engine instance
 engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    echo=True,
+    settings.database_url
 )
 
-
+# Workspace session pipeline generation factor context rules
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -31,20 +24,16 @@ class Base(DeclarativeBase):
 
 
 async def get_db():
+    """
+    Yields transactional workspace boundaries safely via FastAPI Depends scopes.
+    """
     async with AsyncSessionLocal() as session:
         yield session
 
 
 async def init_db():
+    """
+    Asynchronously synchronizes table structural objects to SQLite cleanly.
+    """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await init_db()
-    yield
-    await engine.dispose()
-
-
-app = FastAPI(lifespan=lifespan)
