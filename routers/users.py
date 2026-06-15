@@ -21,10 +21,10 @@ from sqlalchemy import delete as sql_delete
 from email_utils import send_password_reset_email
 from config import settings 
 
-router = APIRouter()
+# Import image utilities securely
+from image_utils import save_profile_picture, delete_old_profile_picture
 
-UPLOAD_DIR = "media/profile_pics"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+router = APIRouter()
 
 
 async def get_user_or_404(
@@ -171,7 +171,6 @@ async def forgot_password(
         token = generate_reset_token()
         token_hash = hash_reset_token(token)
         
-        # FIXED: Stripping away timezones right when creating the token expiration
         expires_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(
             minutes=settings.reset_token_expire_minutes,
         )
@@ -216,7 +215,6 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    # FIXED: Stripped tzinfo from both datetimes to guarantee an offset-naive comparison for SQLite
     if reset_token.expires_at.replace(tzinfo=None) < datetime.now(UTC).replace(tzinfo=None):
         await db.delete(reset_token)
         await db.commit()
@@ -282,17 +280,19 @@ async def update_profile_picture(
     file: UploadFile = File(...)
 ):
     if user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized action context.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Unauthorized action context."
+        )
     
-    ext = os.path.splitext(file.filename)[1]
-    if ext.lower() not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported format asset pattern.")
+    old_image = current_user.image_file
 
-    unique_filename = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    # Optimize and save the new picture to your S3 bucket instance
+    unique_filename = await save_profile_picture(file)
 
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
+    if old_image:
+        # FIXED: Added 'await' here so the old picture is successfully removed from S3 on update
+        await delete_old_profile_picture(old_image)
 
     current_user.image_file = unique_filename
     await db.commit()
@@ -383,6 +383,10 @@ async def delete_user(
 ):
     if user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access Forbidden.")
+
+    # FIXED: Added 'await' here so the image file is deleted from S3 when an account is deleted
+    if current_user.image_file:
+        await delete_old_profile_picture(current_user.image_file)
 
     await db.delete(current_user)
     await db.commit()

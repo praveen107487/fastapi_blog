@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
+from config import settings
 
 # ---------------- USERS ---------------- #
 
@@ -35,7 +36,17 @@ class UserPublic(BaseModel):
 
     id: int
     username: str
-    image_path: str | None = None
+    
+    # FIXED: Added image_file as an excluded field so Pydantic passes it from the DB to the property
+    image_file: str | None = Field(default=None, exclude=True)
+    
+    # FIXED: Computes the absolute S3 path safely from the internal data model
+    @computed_field
+    @property
+    def image_path(self) -> str:
+        if self.image_file:
+            return f"https://{settings.s3_bucket_name}.s3.{settings.s3_region}.amazonaws.com/profile_pics/{self.image_file}"
+        return "/static/profile_pics/default.jpg"
 
 class UserPrivate(UserPublic):
     email: EmailStr
@@ -73,6 +84,10 @@ class PostResponse(PostBase):
     user_id: int
     date_posted: datetime
     author: UserPublic
+
+
+# ---------------- PASSWORD RECOVERY SCHEMAS ---------------- #
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr = Field(max_length=120)
 
@@ -85,6 +100,9 @@ class ResetPasswordRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8)
+
+
+# ---------------- PAGINATION SCHEMAS ---------------- #
     
 class PaginatedPostResponse(BaseModel):
     items: list[PostResponse]

@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
+from config import settings
 
 class User(Base):
     __tablename__ = "users"
@@ -21,10 +22,15 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+
+    # FIXED: Re-routed path generation from local paths to your live S3 cloud bucket
     @property
     def image_path(self) -> str:
+        """
+        Dynamically yields the correct absolute media asset resource location.
+        """
         if self.image_file:
-            return f"/media/profile_pics/{self.image_file}"
+            return f"https://{settings.s3_bucket_name}.s3.{settings.s3_region}.amazonaws.com/profile_pics/{self.image_file}"
         return "/static/profile_pics/default.jpg"
 
 
@@ -42,8 +48,9 @@ class Post(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC)
     )
-    likes:Mapped[int]=mapped_column(Integer,default=0,server_default="0")
+    likes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     author: Mapped[User] = relationship(back_populates="posts")
+    
     
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"

@@ -13,17 +13,14 @@ from sqlalchemy.orm import joinedload
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
-from database import Base, engine, get_db
+from database import engine, get_db
 from routers import post, users
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
+    # FIXED: Removed duplicate metadata creation steps to prevent migration runtime desync loops
     yield
-
     await engine.dispose()
 
 
@@ -51,10 +48,15 @@ def format_datetime(value, format_str="%b %d, %Y at %I:%M %p"):
         return value.strftime(format_str)
 
     try:
-        if " " in str(value) or "T" in str(value):
-            dt = datetime.fromisoformat(str(value))
+        val_str = str(value)
+        # Sanitizes trailing Z format arrays for clean universal datetime extraction
+        if val_str.endswith("Z"):
+            val_str = val_str[:-1] + "+00:00"
+            
+        if " " in val_str or "T" in val_str:
+            dt = datetime.fromisoformat(val_str)
         else:
-            dt = datetime.strptime(str(value), "%H:%M:%S.%f")
+            dt = datetime.strptime(val_str, "%H:%M:%S.%f")
             return dt.strftime("%I:%M %p")
 
         return dt.strftime(format_str)
@@ -89,7 +91,6 @@ app.include_router(
 @app.get("/", include_in_schema=False, name="home")
 @app.get("/posts", include_in_schema=False, name="posts")
 async def home(request: Request):
-    # Pass an empty shell context; JavaScript will take over loading elements dynamically
     return templates.TemplateResponse(
         request=request,
         name="home.html",
