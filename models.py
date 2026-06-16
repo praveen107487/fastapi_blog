@@ -22,8 +22,6 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
-
-    # FIXED: Re-routed path generation from local paths to your live S3 cloud bucket
     @property
     def image_path(self) -> str:
         """

@@ -11,3 +11,7 @@ wheels/
 
 # env
 .env
+.env*
+.flaskenv*
+!.env.project
+!.env.vault

@@ -36,11 +36,9 @@ class UserPublic(BaseModel):
 
     id: int
     username: str
-    
-    # FIXED: Added image_file as an excluded field so Pydantic passes it from the DB to the property
+
     image_file: str | None = Field(default=None, exclude=True)
     
-    # FIXED: Computes the absolute S3 path safely from the internal data model
     @computed_field
     @property
     def image_path(self) -> str:

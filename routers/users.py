@@ -287,11 +287,9 @@ async def update_profile_picture(
     
     old_image = current_user.image_file
 
-    # Optimize and save the new picture to your S3 bucket instance
     unique_filename = await save_profile_picture(file)
 
     if old_image:
-        # FIXED: Added 'await' here so the old picture is successfully removed from S3 on update
         await delete_old_profile_picture(old_image)
 
     current_user.image_file = unique_filename
@@ -383,8 +381,6 @@ async def delete_user(
 ):
     if user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access Forbidden.")
-
-    # FIXED: Added 'await' here so the image file is deleted from S3 when an account is deleted
     if current_user.image_file:
         await delete_old_profile_picture(current_user.image_file)
 
