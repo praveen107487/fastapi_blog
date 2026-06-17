@@ -6,6 +6,20 @@ The project provides secure authentication, blog publishing workflows, image pro
 
 ---
 
+## 🌐 Live Deployment
+
+**Application URL:** https://fastapi-blog-6n25.onrender.com/
+
+| Service          | URL                                          |
+| ---------------- | -------------------------------------------- |
+| Live Application | https://fastapi-blog-6n25.onrender.com/      |
+| Swagger UI       | https://fastapi-blog-6n25.onrender.com/docs  |
+| ReDoc            | https://fastapi-blog-6n25.onrender.com/redoc |
+
+> **Note:** The application is hosted on Render's free tier. Initial requests may take a few seconds if the service is waking from an idle state.
+
+---
+
 ## 🚀 Features
 
 ### Asynchronous Database Layer
@@ -210,11 +224,11 @@ uv run uvicorn main:app --reload
 
 Application URLs:
 
-| Service         | URL                         |
-| --------------- | --------------------------- |
-| Web Application | http://127.0.0.1:8000       |
-| Swagger UI      | http://127.0.0.1:8000/docs  |
-| ReDoc           | http://127.0.0.1:8000/redoc |
+| Service         | Local URL                   | Production URL                               |
+| --------------- | --------------------------- | -------------------------------------------- |
+| Web Application | http://127.0.0.1:8000       | https://fastapi-blog-6n25.onrender.com/      |
+| Swagger UI      | http://127.0.0.1:8000/docs  | https://fastapi-blog-6n25.onrender.com/docs  |
+| ReDoc           | http://127.0.0.1:8000/redoc | https://fastapi-blog-6n25.onrender.com/redoc |
 
 ---
 
